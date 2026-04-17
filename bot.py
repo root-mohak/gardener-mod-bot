@@ -266,5 +266,120 @@ async def setupserver(ctx):
     await guild.create_text_channel("daily-checkin", category=general_cat, overwrites=general_overwrites)
 
     await ctx.send("✅ Server fully setup with permissions!")    
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def fullsetup(ctx):
+    guild = ctx.guild
+
+    await ctx.send("⚙️ Setting up full server...")
+
+    # =========================
+    # CREATE ROLES
+    # =========================
+    roles = [
+        "🌿 New Joiner",
+        "💻 Member",
+        "🚀 Active Builder",
+        "💎 Premium"
+    ]
+
+    role_objs = {}
+
+    for role_name in roles:
+        role = discord.utils.get(guild.roles, name=role_name)
+        if not role:
+            role = await guild.create_role(name=role_name)
+        role_objs[role_name] = role
+
+    # =========================
+    # CLEAR OLD CHANNELS (OPTIONAL)
+    # =========================
+    for channel in guild.channels:
+        try:
+            await channel.delete()
+        except:
+            pass
+
+    # =========================
+    # ONBOARDING CATEGORY
+    # =========================
+    onboarding_overwrites = {
+        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        role_objs["🌿 New Joiner"]: discord.PermissionOverwrite(
+            view_channel=True,
+            send_messages=True,
+            read_message_history=True
+        )
+    }
+
+    onboarding = await guild.create_category("👋 Onboarding", overwrites=onboarding_overwrites)
+
+    await guild.create_text_channel("welcome", category=onboarding)
+    await guild.create_text_channel("rules-and-etiquette", category=onboarding)
+    await guild.create_text_channel("introductions", category=onboarding)
+    await guild.create_text_channel("choose-your-interests", category=onboarding)
+
+    # =========================
+    # COMMUNITY CATEGORY
+    # =========================
+    community_overwrites = {
+        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        role_objs["💻 Member"]: discord.PermissionOverwrite(
+            view_channel=True,
+            send_messages=True,
+            read_message_history=True
+        )
+    }
+
+    community = await guild.create_category("💬 Community", overwrites=community_overwrites)
+
+    await guild.create_text_channel("general", category=community)
+    await guild.create_text_channel("daily-checkin", category=community)
+    await guild.create_text_channel("off-topic", category=community)
+
+    # =========================
+    # DISCUSSIONS CATEGORY
+    # =========================
+    discussion = await guild.create_category("🧠 Discussions", overwrites=community_overwrites)
+
+    await guild.create_text_channel("tech", category=discussion)
+    await guild.create_text_channel("startups", category=discussion)
+    await guild.create_text_channel("markets", category=discussion)
+    await guild.create_text_channel("psychology", category=discussion)
+
+    # =========================
+    # BUILDERS CATEGORY
+    # =========================
+    builder_overwrites = {
+        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        role_objs["🚀 Active Builder"]: discord.PermissionOverwrite(
+            view_channel=True,
+            send_messages=True
+        )
+    }
+
+    builders = await guild.create_category("🚀 Builders", overwrites=builder_overwrites)
+
+    await guild.create_text_channel("build-in-public", category=builders)
+    await guild.create_text_channel("projects-showcase", category=builders)
+    await guild.create_text_channel("collaboration-zone", category=builders)
+
+    # =========================
+    # PREMIUM CATEGORY
+    # =========================
+    premium_overwrites = {
+        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        role_objs["💎 Premium"]: discord.PermissionOverwrite(
+            view_channel=True,
+            send_messages=True
+        )
+    }
+
+    premium = await guild.create_category("💎 Premium", overwrites=premium_overwrites)
+
+    await guild.create_text_channel("premium-chat", category=premium)
+    await guild.create_text_channel("premium-resources", category=premium)
+
+    await ctx.send("✅ FULL SERVER SETUP COMPLETE!")    
 
 bot.run(TOKEN)
