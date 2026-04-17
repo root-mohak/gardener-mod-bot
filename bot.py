@@ -5,10 +5,9 @@ from datetime import timedelta
 import os
 
 # =========================
-# TOKEN (FROM ENV)
+# TOKEN (FROM ENV VARIABLE)
 # =========================
 TOKEN = os.getenv("TOKEN")
-
 
 # =========================
 # INTENTS
@@ -61,10 +60,10 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member):
-    new_role = discord.utils.get(member.guild.roles, name="🌿 New Joiner")
+    role = discord.utils.get(member.guild.roles, name="🌿 New Joiner")
 
-    if new_role:
-        await member.add_roles(new_role)
+    if role:
+        await member.add_roles(role)
 
     channel = discord.utils.get(member.guild.text_channels, name="welcome")
 
