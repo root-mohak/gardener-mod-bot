@@ -190,5 +190,81 @@ async def unlockchannel(ctx):
 @bot.command()
 async def interests(ctx):
     await ctx.send("Select interests 👇", view=InterestView())
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def setupserver(ctx):
+    guild = ctx.guild
+
+    # =========================
+    # CREATE ROLES
+    # =========================
+    roles = {
+        "🌿 New Joiner": discord.Permissions(view_channel=True),
+        "💻 Member": discord.Permissions(
+            view_channel=True,
+            send_messages=True,
+            read_message_history=True
+        ),
+        "🚀 Active Builder": discord.Permissions(
+            view_channel=True,
+            send_messages=True
+        ),
+        "💎 Premium": discord.Permissions(
+            view_channel=True,
+            send_messages=True
+        )
+    }
+
+    created_roles = {}
+
+    for name, perms in roles.items():
+        role = discord.utils.get(guild.roles, name=name)
+        if not role:
+            role = await guild.create_role(name=name, permissions=perms)
+        created_roles[name] = role
+
+    # =========================
+    # CREATE CATEGORY: ONBOARDING
+    # =========================
+    onboarding = await guild.create_category("👋 Onboarding")
+
+    # Permission setup
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        created_roles["🌿 New Joiner"]: discord.PermissionOverwrite(
+            view_channel=True,
+            send_messages=True
+        ),
+        created_roles["💻 Member"]: discord.PermissionOverwrite(
+            view_channel=True,
+            send_messages=True
+        )
+    }
+
+    # =========================
+    # CREATE CHANNELS
+    # =========================
+    await guild.create_text_channel("welcome", category=onboarding, overwrites=overwrites)
+    await guild.create_text_channel("rules-and-etiquette", category=onboarding, overwrites=overwrites)
+    await guild.create_text_channel("introductions", category=onboarding, overwrites=overwrites)
+    await guild.create_text_channel("choose-your-interests", category=onboarding, overwrites=overwrites)
+
+    # =========================
+    # GENERAL CATEGORY
+    # =========================
+    general_cat = await guild.create_category("💬 Community")
+
+    general_overwrites = {
+        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        created_roles["💻 Member"]: discord.PermissionOverwrite(
+            view_channel=True,
+            send_messages=True
+        )
+    }
+
+    await guild.create_text_channel("general", category=general_cat, overwrites=general_overwrites)
+    await guild.create_text_channel("daily-checkin", category=general_cat, overwrites=general_overwrites)
+
+    await ctx.send("✅ Server fully setup with permissions!")    
 
 bot.run(TOKEN)
