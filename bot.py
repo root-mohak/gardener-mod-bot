@@ -4,14 +4,8 @@ from discord.ui import Button, View
 from datetime import timedelta
 import os
 
-# =========================
-# TOKEN
-# =========================
 TOKEN = os.getenv("TOKEN")
 
-# =========================
-# INTENTS
-# =========================
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -19,12 +13,11 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # =========================
-# VERIFY BUTTON
+# VERIFY SYSTEM
 # =========================
 class VerifyView(View):
     def __init__(self):
         super().__init__(timeout=None)
-
         button = Button(label="I Agree ✅", style=discord.ButtonStyle.success)
         button.callback = self.verify_user
         self.add_item(button)
@@ -33,48 +26,48 @@ class VerifyView(View):
         guild = interaction.guild
         user = interaction.user
 
-        member_role = discord.utils.get(guild.roles, name="💻 Member")
-        new_joiner = discord.utils.get(guild.roles, name="🌿 New Joiner")
+        member = discord.utils.get(guild.roles, name="💻 Member")
+        new = discord.utils.get(guild.roles, name="🌿 New Joiner")
 
-        if new_joiner:
-            await user.remove_roles(new_joiner)
-
-        if member_role:
-            await user.add_roles(member_role)
+        if new:
+            await user.remove_roles(new)
+        if member:
+            await user.add_roles(member)
 
         await interaction.response.send_message(
-            "Welcome! You now have full access 🌱",
+            "✅ Verified! You now have access.",
             ephemeral=True
         )
 
 # =========================
 # INTEREST SYSTEM
 # =========================
-INTEREST_ROLES = [
-    "🧠 Psychology",
-    "📈 Markets",
-    "🚀 Startups",
-    "💻 Programming",
-    "🤖 AI / ML",
-    "🛡️ Cybersecurity"
-]
+ROLE_MAP = {
+    "Psychology": "🧠 Psychology",
+    "Markets": "📈 Markets",
+    "Startups": "🚀 Startups",
+    "Programming": "💻 Programming",
+    "AI ML": "🤖 AI / ML",
+    "Cybersecurity": "🛡️ Cybersecurity"
+}
 
 class InterestView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-        for role_name in INTEREST_ROLES:
-            button = Button(label=role_name, style=discord.ButtonStyle.primary)
-            button.callback = self.create_callback(role_name)
+        for key, label in ROLE_MAP.items():
+            button = Button(label=label, style=discord.ButtonStyle.primary)
+            button.callback = self.create_callback(key)
             self.add_item(button)
 
-    def create_callback(self, role_name):
+    def create_callback(self, key):
         async def callback(interaction: discord.Interaction):
+            role_name = ROLE_MAP[key]
             role = discord.utils.get(interaction.guild.roles, name=role_name)
 
             if not role:
                 await interaction.response.send_message(
-                    f"Role {role_name} not found ❌",
+                    f"{role_name} not found ❌",
                     ephemeral=True
                 )
                 return
@@ -82,13 +75,13 @@ class InterestView(View):
             if role in interaction.user.roles:
                 await interaction.user.remove_roles(role)
                 await interaction.response.send_message(
-                    f"Removed {role_name} ❌",
+                    f"Removed {role_name}",
                     ephemeral=True
                 )
             else:
                 await interaction.user.add_roles(role)
                 await interaction.response.send_message(
-                    f"Added {role_name} ✅",
+                    f"Added {role_name}",
                     ephemeral=True
                 )
 
@@ -106,141 +99,96 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member):
-    role = discord.utils.get(member.guild.roles, name="🌿 New Joiner")
+    guild = member.guild
 
-    if role:
-        await member.add_roles(role)
+    new = discord.utils.get(guild.roles, name="🌿 New Joiner")
+    if new:
+        await member.add_roles(new)
 
-    channel = discord.utils.get(member.guild.text_channels, name="welcome")
+    welcome = discord.utils.get(guild.text_channels, name="welcome")
+    interest = discord.utils.get(guild.text_channels, name="choose-your-interests")
 
-    if channel:
-        await channel.send(
-            f"Welcome {member.mention} 🌱\n\n"
-            f"Please read the rules and click below to continue.",
+    if welcome:
+        await welcome.send(
+            f"""
+Welcome {member.mention} 🌱
+
+1️⃣ Read rules  
+2️⃣ Click verify  
+3️⃣ Choose interests  
+
+Then introduce yourself 🚀
+""",
             view=VerifyView()
         )
 
+    if interest:
+        await interest.send(
+            f"{member.mention} choose your interests 👇",
+            view=InterestView()
+        )
+
 # =========================
-# MODERATION FILTER
+# FILTER
 # =========================
-BAD_WORDS = {
-    "fk", "idiot", "stupid", "dumb",
-    "madarchod", "bhosdike"
-}
+BAD_WORDS = {"fk","idiot","stupid","dumb","madarchod","bhosdike"}
 
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
-    content = message.content.lower()
-
-    if any(word in content for word in BAD_WORDS):
+    if any(w in message.content.lower() for w in BAD_WORDS):
         await message.delete()
         await message.channel.send(
-            f"{message.author.mention} please maintain etiquette ⚠️"
+            f"{message.author.mention} maintain etiquette ⚠️"
         )
 
     await bot.process_commands(message)
 
 # =========================
-# BASIC COMMANDS
+# COMMANDS
 # =========================
 @bot.command()
 async def ping(ctx):
-    await ctx.send("GardenerMod is active 🌱")
-
+    await ctx.send("GardenerMod active 🌱")
 
 @bot.command()
 async def timeout(ctx, member: discord.Member, minutes: int):
-    await member.timeout(
-        timedelta(minutes=minutes),
-        reason="Manual moderation"
-    )
-    await ctx.send(f"{member.mention} timed out for {minutes} minutes")
+    await member.timeout(timedelta(minutes=minutes))
+    await ctx.send(f"{member.mention} timed out")
 
-# =========================
-# ROLE COMMANDS
-# =========================
 @bot.command()
 @commands.has_permissions(manage_roles=True)
 async def giverole(ctx, member: discord.Member, *, role_name: str):
     role = discord.utils.get(ctx.guild.roles, name=role_name)
-
-    if not role:
+    if role:
+        await member.add_roles(role)
+        await ctx.send("Role added ✅")
+    else:
         await ctx.send("Role not found ❌")
-        return
 
-    await member.add_roles(role)
-    await ctx.send(f"Added {role.name} to {member.mention} ✅")
-
-
-@bot.command()
-@commands.has_permissions(manage_roles=True)
-async def removerole(ctx, member: discord.Member, *, role_name: str):
-    role = discord.utils.get(ctx.guild.roles, name=role_name)
-
-    if not role:
-        await ctx.send("Role not found ❌")
-        return
-
-    await member.remove_roles(role)
-    await ctx.send(f"Removed {role.name} from {member.mention} ✅")
-
-# =========================
-# CHANNEL CONTROL
-# =========================
 @bot.command()
 @commands.has_permissions(manage_channels=True)
 async def lockchannel(ctx):
     try:
-        channel = ctx.channel
-        guild = ctx.guild
-
-        overwrite = channel.overwrites_for(guild.default_role)
+        overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
         overwrite.send_messages = False
-
-        await channel.set_permissions(guild.default_role, overwrite=overwrite)
-
-        bot_overwrite = channel.overwrites_for(guild.me)
-        bot_overwrite.send_messages = True
-
-        await channel.set_permissions(guild.me, overwrite=bot_overwrite)
-
-        await ctx.send(f"🔒 {channel.mention} has been locked.")
-
-    except discord.Forbidden:
-        await ctx.send("❌ Bot lacks permissions.")
-
-    except Exception as e:
-        print(e)
-
+        await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
+        await ctx.send("🔒 Locked")
+    except:
+        await ctx.send("Error ❌")
 
 @bot.command()
 @commands.has_permissions(manage_channels=True)
 async def unlockchannel(ctx):
-    try:
-        channel = ctx.channel
-        guild = ctx.guild
+    overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
+    overwrite.send_messages = True
+    await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
+    await ctx.send("🔓 Unlocked")
 
-        overwrite = channel.overwrites_for(guild.default_role)
-        overwrite.send_messages = True
-
-        await channel.set_permissions(guild.default_role, overwrite=overwrite)
-
-        await ctx.send(f"🔓 {channel.mention} has been unlocked.")
-
-    except discord.Forbidden:
-        await ctx.send("❌ Bot lacks permissions.")
-
-# =========================
-# INTEREST COMMAND
-# =========================
 @bot.command()
 async def interests(ctx):
-    await ctx.send("Select your interests 👇", view=InterestView())
+    await ctx.send("Select interests 👇", view=InterestView())
 
-# =========================
-# RUN BOT
-# =========================
 bot.run(TOKEN)
