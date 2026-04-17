@@ -207,7 +207,52 @@ async def unlockchannel(ctx):
 
     except Exception as e:
         await ctx.send("⚠️ Unexpected error occurred.")
-        print(f"Unlock Error: {e}")        
+        print(f"Unlock Error: {e}")    
+ from discord.ui import View, Button
+
+INTEREST_ROLES = [
+    "🧠 Psychology",
+    "📈 Markets",
+    "🚀 Startups",
+    "💻 Programming",
+    "🤖 AI / ML",
+    "🛡️ Cybersecurity"
+]
+
+class InterestView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+        for role_name in INTEREST_ROLES:
+            button = Button(label=role_name, style=discord.ButtonStyle.primary)
+            button.callback = self.create_callback(role_name)
+            self.add_item(button)
+
+    def create_callback(self, role_name):
+        async def callback(interaction: discord.Interaction):
+            role = discord.utils.get(interaction.guild.roles, name=role_name)
+
+            if not role:
+                await interaction.response.send_message(
+                    f"Role {role_name} not found ❌",
+                    ephemeral=True
+                )
+                return
+
+            if role in interaction.user.roles:
+                await interaction.user.remove_roles(role)
+                await interaction.response.send_message(
+                    f"Removed {role_name} ❌",
+                    ephemeral=True
+                )
+            else:
+                await interaction.user.add_roles(role)
+                await interaction.response.send_message(
+                    f"Added {role_name} ✅",
+                    ephemeral=True
+                )
+
+        return callback       
 
 
 
