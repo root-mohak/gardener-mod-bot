@@ -169,3 +169,4 @@ async def unlockchannel(ctx):
 # RUN BOT
 # =========================
 bot.run(TOKEN)
+print("TOKEN:", TOKEN)
