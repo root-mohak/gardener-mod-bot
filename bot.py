@@ -5,7 +5,7 @@ from datetime import timedelta
 import os
 
 # =========================
-# TOKEN (FROM ENV VARIABLE)
+# TOKEN
 # =========================
 TOKEN = os.getenv("TOKEN")
 
@@ -19,16 +19,13 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # =========================
-# VERIFY BUTTON VIEW
+# VERIFY BUTTON
 # =========================
 class VerifyView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-        button = Button(
-            label="I Agree ✅",
-            style=discord.ButtonStyle.success
-        )
+        button = Button(label="I Agree ✅", style=discord.ButtonStyle.success)
         button.callback = self.verify_user
         self.add_item(button)
 
@@ -51,10 +48,59 @@ class VerifyView(View):
         )
 
 # =========================
+# INTEREST SYSTEM
+# =========================
+INTEREST_ROLES = [
+    "🧠 Psychology",
+    "📈 Markets",
+    "🚀 Startups",
+    "💻 Programming",
+    "🤖 AI / ML",
+    "🛡️ Cybersecurity"
+]
+
+class InterestView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+        for role_name in INTEREST_ROLES:
+            button = Button(label=role_name, style=discord.ButtonStyle.primary)
+            button.callback = self.create_callback(role_name)
+            self.add_item(button)
+
+    def create_callback(self, role_name):
+        async def callback(interaction: discord.Interaction):
+            role = discord.utils.get(interaction.guild.roles, name=role_name)
+
+            if not role:
+                await interaction.response.send_message(
+                    f"Role {role_name} not found ❌",
+                    ephemeral=True
+                )
+                return
+
+            if role in interaction.user.roles:
+                await interaction.user.remove_roles(role)
+                await interaction.response.send_message(
+                    f"Removed {role_name} ❌",
+                    ephemeral=True
+                )
+            else:
+                await interaction.user.add_roles(role)
+                await interaction.response.send_message(
+                    f"Added {role_name} ✅",
+                    ephemeral=True
+                )
+
+        return callback
+
+# =========================
 # EVENTS
 # =========================
 @bot.event
 async def on_ready():
+    bot.add_view(VerifyView())
+    bot.add_view(InterestView())
     print(f"{bot.user} is online 🌱")
 
 
@@ -111,9 +157,7 @@ async def timeout(ctx, member: discord.Member, minutes: int):
         timedelta(minutes=minutes),
         reason="Manual moderation"
     )
-    await ctx.send(
-        f"{member.mention} timed out for {minutes} minutes"
-    )
+    await ctx.send(f"{member.mention} timed out for {minutes} minutes")
 
 # =========================
 # ROLE COMMANDS
@@ -153,30 +197,25 @@ async def lockchannel(ctx):
         channel = ctx.channel
         guild = ctx.guild
 
-        # 1. Lock everyone
         overwrite = channel.overwrites_for(guild.default_role)
         overwrite.send_messages = False
 
         await channel.set_permissions(guild.default_role, overwrite=overwrite)
 
-        # 2. Ensure bot can still send messages
         bot_overwrite = channel.overwrites_for(guild.me)
         bot_overwrite.send_messages = True
 
         await channel.set_permissions(guild.me, overwrite=bot_overwrite)
 
-        # 3. Confirmation
         await ctx.send(f"🔒 {channel.mention} has been locked.")
 
     except discord.Forbidden:
-        await ctx.send("❌ Bot lacks permissions to lock this channel.")
-
-    except discord.HTTPException:
-        await ctx.send("⚠️ Failed to lock channel due to Discord error.")
+        await ctx.send("❌ Bot lacks permissions.")
 
     except Exception as e:
-        await ctx.send("⚠️ Unexpected error occurred.")
-        print(f"Lock Error: {e}")
+        print(e)
+
+
 @bot.command()
 @commands.has_permissions(manage_channels=True)
 async def unlockchannel(ctx):
@@ -184,80 +223,24 @@ async def unlockchannel(ctx):
         channel = ctx.channel
         guild = ctx.guild
 
-        # 1. Unlock everyone
         overwrite = channel.overwrites_for(guild.default_role)
         overwrite.send_messages = True
 
         await channel.set_permissions(guild.default_role, overwrite=overwrite)
 
-        # 2. Keep bot allowed (safe)
-        bot_overwrite = channel.overwrites_for(guild.me)
-        bot_overwrite.send_messages = True
-
-        await channel.set_permissions(guild.me, overwrite=bot_overwrite)
-
-        # 3. Confirmation
         await ctx.send(f"🔓 {channel.mention} has been unlocked.")
 
     except discord.Forbidden:
-        await ctx.send("❌ Bot lacks permissions to unlock this channel.")
+        await ctx.send("❌ Bot lacks permissions.")
 
-    except discord.HTTPException:
-        await ctx.send("⚠️ Failed to unlock channel due to Discord error.")
-
-    except Exception as e:
-        await ctx.send("⚠️ Unexpected error occurred.")
-        print(f"Unlock Error: {e}")    
- from discord.ui import View, Button
-
-INTEREST_ROLES = [
-    "🧠 Psychology",
-    "📈 Markets",
-    "🚀 Startups",
-    "💻 Programming",
-    "🤖 AI / ML",
-    "🛡️ Cybersecurity"
-]
-
-class InterestView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-        for role_name in INTEREST_ROLES:
-            button = Button(label=role_name, style=discord.ButtonStyle.primary)
-            button.callback = self.create_callback(role_name)
-            self.add_item(button)
-
-    def create_callback(self, role_name):
-        async def callback(interaction: discord.Interaction):
-            role = discord.utils.get(interaction.guild.roles, name=role_name)
-
-            if not role:
-                await interaction.response.send_message(
-                    f"Role {role_name} not found ❌",
-                    ephemeral=True
-                )
-                return
-
-            if role in interaction.user.roles:
-                await interaction.user.remove_roles(role)
-                await interaction.response.send_message(
-                    f"Removed {role_name} ❌",
-                    ephemeral=True
-                )
-            else:
-                await interaction.user.add_roles(role)
-                await interaction.response.send_message(
-                    f"Added {role_name} ✅",
-                    ephemeral=True
-                )
-
-        return callback       
-
-
+# =========================
+# INTEREST COMMAND
+# =========================
+@bot.command()
+async def interests(ctx):
+    await ctx.send("Select your interests 👇", view=InterestView())
 
 # =========================
 # RUN BOT
 # =========================
 bot.run(TOKEN)
-print("TOKEN:", TOKEN)
