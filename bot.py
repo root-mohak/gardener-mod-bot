@@ -149,21 +149,67 @@ async def removerole(ctx, member: discord.Member, *, role_name: str):
 @bot.command()
 @commands.has_permissions(manage_channels=True)
 async def lockchannel(ctx):
-    overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
-    overwrite.send_messages = False
+    try:
+        channel = ctx.channel
+        guild = ctx.guild
 
-    await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
-    await ctx.send("Channel locked 🔒")
+        # 1. Lock everyone
+        overwrite = channel.overwrites_for(guild.default_role)
+        overwrite.send_messages = False
 
+        await channel.set_permissions(guild.default_role, overwrite=overwrite)
 
+        # 2. Ensure bot can still send messages
+        bot_overwrite = channel.overwrites_for(guild.me)
+        bot_overwrite.send_messages = True
+
+        await channel.set_permissions(guild.me, overwrite=bot_overwrite)
+
+        # 3. Confirmation
+        await ctx.send(f"🔒 {channel.mention} has been locked.")
+
+    except discord.Forbidden:
+        await ctx.send("❌ Bot lacks permissions to lock this channel.")
+
+    except discord.HTTPException:
+        await ctx.send("⚠️ Failed to lock channel due to Discord error.")
+
+    except Exception as e:
+        await ctx.send("⚠️ Unexpected error occurred.")
+        print(f"Lock Error: {e}")
 @bot.command()
 @commands.has_permissions(manage_channels=True)
 async def unlockchannel(ctx):
-    overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
-    overwrite.send_messages = True
+    try:
+        channel = ctx.channel
+        guild = ctx.guild
 
-    await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
-    await ctx.send("Channel unlocked 🔓")
+        # 1. Unlock everyone
+        overwrite = channel.overwrites_for(guild.default_role)
+        overwrite.send_messages = True
+
+        await channel.set_permissions(guild.default_role, overwrite=overwrite)
+
+        # 2. Keep bot allowed (safe)
+        bot_overwrite = channel.overwrites_for(guild.me)
+        bot_overwrite.send_messages = True
+
+        await channel.set_permissions(guild.me, overwrite=bot_overwrite)
+
+        # 3. Confirmation
+        await ctx.send(f"🔓 {channel.mention} has been unlocked.")
+
+    except discord.Forbidden:
+        await ctx.send("❌ Bot lacks permissions to unlock this channel.")
+
+    except discord.HTTPException:
+        await ctx.send("⚠️ Failed to unlock channel due to Discord error.")
+
+    except Exception as e:
+        await ctx.send("⚠️ Unexpected error occurred.")
+        print(f"Unlock Error: {e}")        
+
+
 
 # =========================
 # RUN BOT
