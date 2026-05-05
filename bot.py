@@ -163,7 +163,7 @@ async def on_command_error(ctx, error):
         print(error)
 
 # =========================
-# COMMANDS
+# BASIC COMMANDS
 # =========================
 @bot.command()
 async def ping(ctx):
@@ -174,6 +174,9 @@ async def timeout(ctx, member: discord.Member, minutes: int):
     await member.timeout(timedelta(minutes=minutes))
     await ctx.send(f"{member.mention} timed out")
 
+# =========================
+# ROLE COMMANDS
+# =========================
 @bot.command()
 @commands.has_permissions(manage_roles=True)
 async def giverole(ctx, member: discord.Member, *, role_name: str):
@@ -184,17 +187,47 @@ async def giverole(ctx, member: discord.Member, *, role_name: str):
     else:
         await ctx.send("Role not found ❌")
 
-# 🚀 BUILDER COMMAND
 @bot.command()
-@commands.has_permissions(manage_roles=True)
-async def builder(ctx, member: discord.Member):
-    role = discord.utils.get(ctx.guild.roles, name="🚀 Active Builder")
+@commands.has_permissions(administrator=True)
+async def createrole(ctx, *, role_name: str):
+    guild = ctx.guild
+
+    existing = discord.utils.get(guild.roles, name=role_name)
+    if existing:
+        await ctx.send("Role already exists ⚠️")
+        return
+
+    role = await guild.create_role(name=role_name)
+    await ctx.send(f"Role {role.name} created ✅")
+
+# =========================
+# CORE ADMIN SYSTEM 🔥
+# =========================
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def setupcoreadmin(ctx):
+    guild = ctx.guild
+
+    role = discord.utils.get(guild.roles, name="🧠 Core Admin")
+
+    if not role:
+        role = await guild.create_role(
+            name="🧠 Core Admin",
+            permissions=discord.Permissions(administrator=True)
+        )
+
+    await ctx.send("🧠 Core Admin role ready with full access 🚀")
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def coreadmin(ctx, member: discord.Member):
+    role = discord.utils.get(ctx.guild.roles, name="🧠 Core Admin")
 
     if role:
         await member.add_roles(role)
-        await ctx.send(f"{member.mention} is now a Builder 🚀")
+        await ctx.send(f"{member.mention} is now Core Admin 🧠")
     else:
-        await ctx.send("Builder role not found ❌")
+        await ctx.send("Core Admin role not found ❌")
 
 # =========================
 # CHANNEL CONTROL
@@ -202,13 +235,10 @@ async def builder(ctx, member: discord.Member):
 @bot.command()
 @commands.has_permissions(manage_channels=True)
 async def lockchannel(ctx):
-    try:
-        overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
-        overwrite.send_messages = False
-        await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
-        await ctx.send(f"🔒 {ctx.channel.mention} locked")
-    except:
-        await ctx.send("Error ❌")
+    overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
+    overwrite.send_messages = False
+    await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
+    await ctx.send(f"🔒 {ctx.channel.mention} locked")
 
 @bot.command()
 @commands.has_permissions(manage_channels=True)
@@ -217,6 +247,24 @@ async def unlockchannel(ctx):
     overwrite.send_messages = True
     await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
     await ctx.send(f"🔓 {ctx.channel.mention} unlocked")
+
+# 🔐 SECURE ALL CHANNELS
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def securechannels(ctx):
+    guild = ctx.guild
+    core = discord.utils.get(guild.roles, name="🧠 Core Admin")
+    everyone = guild.default_role
+
+    for channel in guild.channels:
+        overwrite = channel.overwrites_for(everyone)
+        overwrite.view_channel = False
+        await channel.set_permissions(everyone, overwrite=overwrite)
+
+        if core:
+            await channel.set_permissions(core, view_channel=True, send_messages=True)
+
+    await ctx.send("🔐 All channels secured. Core Admin has full access.")
 
 # =========================
 # INTEREST COMMAND
@@ -240,7 +288,6 @@ async def setupmessages(ctx):
         await general.send("""
 🚀 Welcome to the Builder Network
 
-Drop:
 • What you're learning
 • What you want to build
 """)
@@ -257,7 +304,7 @@ Drop:
     await ctx.send("✅ Starter messages sent")
 
 # =========================
-# BUILD TRIGGER
+# BUILD SYSTEM
 # =========================
 @bot.command()
 async def startbuild(ctx):
